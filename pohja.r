@@ -48,9 +48,9 @@ ccf(ele,temp, lag.max=168)
 
 # Stationarisoidaan aikasarjat. Määrittele parametrit d,S,D
 # Huomaa, että sähkönkulutuksen ja lämpötilan aikasarjojen differointien asteiden ei välttämättä tarvitse olla samoja.
-d = 0 # Differoinnin kertaluku d
-S = 0 # Kausidifferoinnin jakso S
-D = 0 # Kausidifferensoinnin kertaluku D
+d = 1 # Differoinnin kertaluku d
+S = 24 # Kausidifferoinnin jakso S
+D = 1 # Kausidifferensoinnin kertaluku D
 dele = ele
 dtemp = temp
 if (d > 0) {
