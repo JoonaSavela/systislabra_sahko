@@ -1,26 +1,26 @@
-# CTRL+Shift+C kommentoi tai poistaa kommentit valituilta riveiltä
+# CTRL+Shift+C kommentoi tai poistaa kommentit valituilta riveilt?
 
-# Asetetaan työhakemisto SET Working Directory
-# Muokkaa tarvittaessa oman työhakemistosi polku
-# RStudiossa tämän voi tehdä myös valikosta Session->Set working directory
+# Asetetaan ty?hakemisto SET Working Directory
+# Muokkaa tarvittaessa oman ty?hakemistosi polku
+# RStudiossa t?m?n voi tehd? my?s valikosta Session->Set working directory
 # setwd('Z:/Documents')
-setwd("~/systislabra_sahko")
+#setwd("~/systislabra_sahko")
 
-# Luetaan sähkönkulutus- ja lämpötiladata, hypätään headerrivin yli
+# Luetaan s?hk?nkulutus- ja l?mp?tiladata, hyp?t??n headerrivin yli
 eletemp = read.table(file = "sahko.csv",
                      sep = ";",
                      dec = ",",
                      skip = 1,
                      col.names = c('kWh','Celcius'))
 
-# Sähkönkulutus aikasarjaksi
+# S?hk?nkulutus aikasarjaksi
 ele = ts(eletemp$kWh[1:816], start = 1, frequency = 24)
 
-# Lämpötila kahdeksi aikasarjaksi: 816 ensimmäistä havaintoa käytetään mallin estimointiin
-# ja 24 viimeistä havaintoa ennustamiseen.
+# L?mp?tila kahdeksi aikasarjaksi: 816 ensimm?ist? havaintoa k?ytet??n mallin estimointiin
+# ja 24 viimeist? havaintoa ennustamiseen.
 temp = ts(eletemp$Celcius, start = 1, frequency = 24)
 temp816 = ts(eletemp$Celcius[1:816], start = 1, frequency = 24)
-# start parametrina vektori: 817. tunti = 35. päivän ensimmäinen tunti
+# start parametrina vektori: 817. tunti = 35. p?iv?n ensimm?inen tunti
 temp24 = ts(eletemp$Celcius[817:840], start = c(35,1), frequency = 24)
 
 # Plotataan aikasarjat
@@ -32,7 +32,7 @@ ts.plot(temp816,temp24,
         ylab = expression(~degree~C),
         col = c("black", "blue"))
 
-# Määritellään 2x2 plottausruudukko.
+# M??ritell??n 2x2 plottausruudukko.
 par(mfrow=c(2,2))
 # Jos haluat katsoa kuvia 2x2 matriisin sijaan yksitellen, niin
 # par(mfrow=c(1,1))
@@ -42,12 +42,12 @@ acf(ele, lag.max=168)
 acf(ele, lag.max=168, type = "partial")
 acf(temp, lag.max=168)
 acf(temp, lag.max=168, type = "partial")
-# Piirretään ristikorrelaatiofunktio omaan kuvaan
+# Piirret??n ristikorrelaatiofunktio omaan kuvaan
 par(mfrow=c(1,1))
 ccf(ele,temp, lag.max=168)
 
-# Stationarisoidaan aikasarjat. Määrittele parametrit d,S,D
-# Huomaa, että sähkönkulutuksen ja lämpötilan aikasarjojen differointien asteiden ei välttämättä tarvitse olla samoja.
+# Stationarisoidaan aikasarjat. M??rittele parametrit d,S,D
+# Huomaa, ett? s?hk?nkulutuksen ja l?mp?tilan aikasarjojen differointien asteiden ei v?ltt?m?tt? tarvitse olla samoja.
 d = 1 # Differoinnin kertaluku d
 S = 24 # Kausidifferoinnin jakso S
 D = 1 # Kausidifferensoinnin kertaluku D
@@ -63,25 +63,28 @@ if (D > 0) {
 }
 
 # Differoitujen aikasarjojen autokorrelaatio-, osittaisautokorrelaatio- ja ristikorrelaatiofunktiot.
+par(mfrow=c(2,2))
 acf(dele, lag.max=168)
 acf(dele, lag.max=168, type = "partial")
 acf(dtemp, lag.max=168)
 acf(dtemp, lag.max=168, type = "partial")
+
+par(mfrow=c(1,1))
 ccf(dele, dtemp, lag.max=168)
 
 # Estimoidaan malli ja lasketaan ennusteet ilman ulkoista muuttujaa.
-p = 1
-q = 1
-P = 1
-Q = 1
+p = 2
+q = 2
+P = 2
+Q = 2
 malli = arima(ele,
               order = c(p,d,q),
               seasonal = list(order = c(P, D, Q),period = S),
               method = "CSS")
 enne = predict(malli, n.ahead = 24)
 
-# Estimoidaan malli lämpötilan kanssa. Määrää lämpötilan mahdollinen viive L.
-L = 1
+# Estimoidaan malli l?mp?tilan kanssa. M??r?? l?mp?tilan mahdollinen viive L.
+L = 12
 tempestimointi = eletemp$Celcius[1:(816-L)]
 tempennuste = eletemp$Celcius[(816-L+1):(816-L+24)]
 eleestimointi = ts(eletemp$kWh[(1+L):816], start = 1, frequency = 24)
@@ -94,8 +97,14 @@ enne2 = predict(malli2,
                 n.ahead = 24,
                 newxreg = tempennuste)
 
-# Esimerkki Portmanteau-testistä. Onko residuaaliaikasarjan alussa nollia?
+# Esimerkki Portmanteau-testist?. Onko residuaaliaikasarjan alussa nollia?
 Box.test(malli$residuals,
+         lag = 20,
+         type = "Ljung-Box",
+         fitdf = p + q + P + Q)
+
+# Esimerkki Portmanteau-testist?. Onko residuaaliaikasarjan alussa nollia?
+Box.test(malli2$residuals,
          lag = 20,
          type = "Ljung-Box",
          fitdf = p + q + P + Q)
@@ -104,7 +113,7 @@ Box.test(malli$residuals,
 par(mfrow=c(1,1))
 
 # Plotataan kuva sahkonkulutusaikasarjasta, mallin (1) sovitteesta,
-# ennusteesta ja ennusteen 95 %:n eli 1,96*sigma-luottamusväleistä.
+# ennusteesta ja ennusteen 95 %:n eli 1,96*sigma-luottamusv?leist?.
 ts.plot(ele,
         ele - malli$residuals,
         enne$pred,
@@ -113,14 +122,31 @@ ts.plot(ele,
         col = c("black", "red", "blue", "blue", "blue"),
         main  = "Sovite ja ennuste")
 
-# Plotataan kuva pelkästä ennusteesta.
+# Plotataan kuva pelk?st? ennusteesta.
 ts.plot(enne$pred,
         enne$pred + 1.96*enne$se,
         enne$pred - 1.96*enne$se,
         col = c("black", "blue", "blue"),
-        main = "Ennuste ja  95 %:n luottamusvälit")
+        main = "Ennuste ja  95 %:n luottamusv?lit")
 
-# Kirjoitetaan ennuste ja luottamusvälit .csv-tiedostoon, jonka voi avata Excelillä.
+# Plotataan kuva sahkonkulutusaikasarjasta, mallin (2) sovitteesta,
+# ennusteesta ja ennusteen 95 %:n eli 1,96*sigma-luottamusv?leist?.
+ts.plot(ele,
+        ele - malli2$residuals,
+        enne2$pred,
+        enne2$pred + 1.96*enne2$se,
+        enne2$pred - 1.96*enne2$se,
+        col = c("black", "red", "blue", "blue", "blue"),
+        main  = "Sovite ja ennuste")
+
+# Plotataan kuva pelk?st? ennusteesta.
+ts.plot(enne2$pred,
+        enne2$pred + 1.96*enne2$se,
+        enne2$pred - 1.96*enne2$se,
+        col = c("black", "blue", "blue"),
+        main = "Ennuste ja  95 %:n luottamusv?lit")
+
+# Kirjoitetaan ennuste ja luottamusv?lit .csv-tiedostoon, jonka voi avata Excelill?.
 output = cbind(enne$pred,
                enne$pred + 1.96*enne$se,
                enne$pred - 1.96*enne$se)
