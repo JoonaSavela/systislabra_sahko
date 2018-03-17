@@ -50,34 +50,80 @@ S = L2
 D = 1
 
 dele168 <- diff(ele, lag = L1, differences = 1)
+dtemp168 <- diff(temp, lag = L1, differences = 1)
 
 ts.plot(dele168,
         xlab = "aika/vrk",
         ylab = "kulutus/kWh")
 
-par(mfrow=c(1,2))
+ts.plot(dtemp168,
+        xlab = "aika/vrk",
+        ylab = expression(~degree~C),
+        col = c("black", "blue"))
+
+par(mfrow=c(2,2))
 
 # Plotataan autokorrelaatio-, osittaisautokorrelaatio- ja ristikorrelaatiofunktiot.
 acf(dele168, lag.max=168)
 acf(dele168, lag.max=168, type = "partial")
+acf(dtemp168, lag.max=168)
+acf(dtemp168, lag.max=168, type = "partial")
 # Piirret??n ristikorrelaatiofunktio omaan kuvaan
 par(mfrow=c(1,1))
-ccf(dele168,temp, lag.max=168)
+ccf(dele168, dtemp168, lag.max=168)
 
+dele <- dele168
+dtemp <- dtemp168
+
+if (d > 0) {
+  dtemp <- diff(dtemp, lag = 1, differences = d)
+  dele <- diff(dele, lag = 1, differences = d)
+}
 if (D > 0) {
-  dele <- diff(dele168, lag = L2, differences = D)
+  dtemp <- diff(dtemp, lag = L2, differences = D)
+  dele <- diff(dele, lag = L2, differences = D)
 }
 ts.plot(dele,
         xlab = "aika/vrk",
         ylab = "kulutus/kWh")
 
-par(mfrow=c(1,2))
+ts.plot(dtemp,
+        xlab = "aika/vrk",
+        ylab = expression(~degree~C),
+        col = c("black", "blue"))
+
+par(mfrow=c(2,2))
 
 # Plotataan autokorrelaatio-, osittaisautokorrelaatio- ja ristikorrelaatiofunktiot.
 acf(dele, lag.max=168)
 acf(dele, lag.max=168, type = "partial")
+acf(dtemp, lag.max=168)
+acf(dtemp, lag.max=168, type = "partial")
 # Piirret??n ristikorrelaatiofunktio omaan kuvaan
 par(mfrow=c(1,1))
-ccf(dele,temp, lag.max=168)
+ccf(dele,dtemp, lag.max=168)
+
+# Estimoidaan malli ja lasketaan ennusteet ilman ulkoista muuttujaa.
+p = 5
+q = 1
+P = 1
+Q = 1
+
+#lämpötilan mahdollinen viive
+L = 0
+
+# TODO: differentoi
+tempestimointi = eletemp$Celcius[1:(816-L)]
+tempennuste = eletemp$Celcius[(816-L+1):(816-L+24)]
+eleestimointi = ts(eletemp$kWh[(1+L):816], start = 1, frequency = 24)
+malli = arima(eleestimointi,
+               order = c(p,d,q),
+               seasonal = list(order = c(P, D, Q), period = S),
+               xreg = tempestimointi,
+               method = "CSS")
+enne = predict(malli2, 
+               n.ahead = 24,
+               newxreg = tempennuste)
+
 
 
