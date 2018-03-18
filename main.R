@@ -21,6 +21,7 @@ temp24 = ts(eletemp$Celcius[817:840], start = c(35,1), frequency = 24)
 ts.plot(ele,
         xlab = "aika/vrk",
         ylab = "kulutus/kWh")
+
 ts.plot(temp816,temp24,
         xlab = "aika/vrk",
         ylab = expression(~degree~C),
@@ -44,7 +45,7 @@ ccf(ele,temp, lag.max=168)
 L1 = 168
 L2 = 24
 
-# Differointien lukumÃ¤Ã¤rÃ¤, kauden pituus
+# Differointien kertaluvut, kauden pituus
 d = 1
 S = L2
 D = 1
@@ -104,7 +105,7 @@ par(mfrow=c(1,1))
 ccf(dele,dtemp, lag.max=168)
 
 # Estimoidaan malli ja lasketaan ennusteet ilman ulkoista muuttujaa.
-p = 5
+p = 1
 q = 1
 P = 1
 Q = 1
@@ -112,18 +113,77 @@ Q = 1
 #lämpötilan mahdollinen viive
 L = 0
 
-# TODO: differentoi
-tempestimointi = eletemp$Celcius[1:(816-L)]
-tempennuste = eletemp$Celcius[(816-L+1):(816-L+24)]
-eleestimointi = ts(eletemp$kWh[(1+L):816], start = 1, frequency = 24)
+n <- length(dele168)
+
+tempestimointi = dtemp168[1:(n-L)]
+tempennuste = dtemp168[(n-L+1):(n-L+24)]
+eleestimointi = dele168[(1+L):n]
 malli = arima(eleestimointi,
                order = c(p,d,q),
                seasonal = list(order = c(P, D, Q), period = S),
                xreg = tempestimointi,
                method = "CSS")
-enne = predict(malli2, 
+enne = predict(malli, 
                n.ahead = 24,
                newxreg = tempennuste)
+
+#Integroidaan for-loopilla ennuste ja luottamusv?lit kausivaihtelun pituudella L1
+ennuste = c(1:24)
+clyla = c(1:24)
+clala = c(1:24)
+for (x in c(1:24)) {
+  ennuste[x] = ele[816-L1+x] + enne$pred[x]
+  clyla[x] = ennuste[x] + 1.96*enne$se[x]
+  clala[x] = ennuste[x] - 1.96*enne$se[x]
+}
+
+#Tehd??n ennusteesta aikasarja ja plotataan
+ennuste = ts(ennuste, start = c(35,1), frequency = 24)
+clyla = ts(clyla, start = c(35,1), frequency = 24)
+clala = ts(clala, start = c(35,1), frequency = 24)
+ts.plot(ennuste, clyla, clala, col = c("black", "blue", "blue"), main = "Ennuste ja  95 %:n luottamusv?lit")
+
+# Pelkkä ennuste
+ts.plot(ele,
+        ennuste,
+        col = c("black", "blue"),
+        main = "Ennuste")
+
+# ennuste ja 95 % luottamusvälit
+ts.plot(ele,
+        ennuste,
+        clyla,
+        clala,
+        col = c("black", "blue", "red", "red"),
+        main = "Ennuste ja 95 %:n luottamusv?lit")
+
+# ennuste ja 95 % luottamusvälit
+ts.plot(ts(ele[(816-48+1):816], start = c(33,1), frequency = 24),
+        ennuste,
+        clyla,
+        clala,
+        col = c("black", "blue", "red", "red"),
+        main = "Ennuste ja 95 %:n luottamusv?lit")
+
+# ennuste verrattuna edelliseen 
+ts.plot(ts(ele[(816-168+1):(816-168+24)], start = start(ennuste), frequency = 24),
+        ennuste,
+        col = c("black", "blue"),
+        main = "Ennuste ja edellisen viikon arvo")
+
+# Testataan residuaalit 
+
+# TODO oikeat residuaalit (oikea arvo - sovite)
+
+acf(malli$residuals, lag.max = 168)
+hist(malli$residuals)
+
+# Esimerkki Portmanteau-testist?. Onko residuaaliaikasarjan alussa nollia?
+Box.test(malli$residuals,
+         lag = 20,
+         type = "Ljung-Box",
+         fitdf = p + q + P + Q) #p-arvo = 0.04046
+
 
 
 
